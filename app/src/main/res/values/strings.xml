@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">MapboxRepro</string>
+    <string name="current_night_mode" translatable="false">current_night_mode</string>
+    <string name="title_embedded_navigation">Embedded Navigation</string>
+    <string name="description_embedded_navigation">Navigation in a view which contains other views</string>
+</resources>
