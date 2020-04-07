@@ -49,8 +49,10 @@ public class EmbeddedNavigationActivity extends AppCompatActivity implements OnN
     private static final Point ORIGIN = Point.fromLngLat(-77.03194990754128, 38.909664963450105);
     private static final Point DESTINATION = Point.fromLngLat(-77.0270025730133, 38.91057077063121);
     private static final int INITIAL_ZOOM = 16;
+    private static final String MAPBOX_ACCESS_TOKEN = "REPLACE_ME";
 
     private NavigationView navigationView;
+
     private View spacer;
     private TextView speedWidget;
     private FloatingActionButton fabNightModeToggle;
@@ -60,6 +62,7 @@ public class EmbeddedNavigationActivity extends AppCompatActivity implements OnN
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        Mapbox.getInstance(this, MAPBOX_ACCESS_TOKEN);
         setTheme(R.style.Theme_AppCompat_Light_NoActionBar);
         initNightMode();
         super.onCreate(savedInstanceState);

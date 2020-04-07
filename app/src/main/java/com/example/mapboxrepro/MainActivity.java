@@ -28,13 +28,10 @@ import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 public class MainActivity extends AppCompatActivity implements PermissionsListener {
     private RecyclerView recyclerView;
     private PermissionsManager permissionsManager;
-    private static final String MAPBOX_ACCESS_TOKEN = "ACCESS_TOKEN_REPLACE_ME";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Mapbox.getInstance(this, MAPBOX_ACCESS_TOKEN);
-
         setContentView(R.layout.activity_main);
 
         final List<SampleItem> samples = new ArrayList<>(Arrays.asList(
