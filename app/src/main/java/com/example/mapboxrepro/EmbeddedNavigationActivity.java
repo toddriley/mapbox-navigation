@@ -1,29 +1,31 @@
 package com.example.mapboxrepro;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import androidx.annotation.IdRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import com.google.android.material.bottomsheet.BottomSheetBehavior;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.AbsoluteSizeSpan;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
+import androidx.annotation.IdRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.mapbox.api.directions.v5.models.BannerInstructions;
-import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.geojson.Point;
-import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.services.android.navigation.ui.v5.NavigationView;
@@ -32,26 +34,22 @@ import com.mapbox.services.android.navigation.ui.v5.OnNavigationReadyCallback;
 import com.mapbox.services.android.navigation.ui.v5.listeners.BannerInstructionsListener;
 import com.mapbox.services.android.navigation.ui.v5.listeners.InstructionListListener;
 import com.mapbox.services.android.navigation.ui.v5.listeners.NavigationListener;
-import com.mapbox.services.android.navigation.ui.v5.listeners.SpeechAnnouncementListener;
-import com.mapbox.services.android.navigation.ui.v5.voice.SpeechAnnouncement;
-import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation;
-import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
+import com.mapbox.services.android.navigation.ui.v5.listeners.RouteListener;
 import com.mapbox.services.android.navigation.v5.routeprogress.ProgressChangeListener;
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteProgress;
 
-import retrofit2.Call;
-import retrofit2.Response;
-
-public class EmbeddedNavigationActivity extends AppCompatActivity implements OnNavigationReadyCallback,
-        NavigationListener, ProgressChangeListener, InstructionListListener, SpeechAnnouncementListener,
+public class EmbeddedNavigationActivity extends AppCompatActivity implements
+        OnNavigationReadyCallback,
+        NavigationListener,
+        ProgressChangeListener,
+        InstructionListListener,
+        RouteListener,
         BannerInstructionsListener {
-
-    private static final Point ORIGIN = Point.fromLngLat(-77.03194990754128, 38.909664963450105);
-    private static final Point DESTINATION = Point.fromLngLat(-77.0270025730133, 38.91057077063121);
     private static final int INITIAL_ZOOM = 16;
+    public static final String BUNDLE_CURRENT_ROUTE = "currentRoute";
+    public static final String BUNDLE_ROUTE_REQUEST = "routeRequest";
 
     private NavigationView navigationView;
-
     private View spacer;
     private TextView speedWidget;
     private FloatingActionButton fabNightModeToggle;
@@ -59,9 +57,11 @@ public class EmbeddedNavigationActivity extends AppCompatActivity implements OnN
     private boolean bottomSheetVisible = true;
     private boolean instructionListShown = false;
 
+    private DirectionsRoute currentRoute;
+    private RouteRequest routeRequest;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
-        Mapbox.getInstance(this, BuildConfig.MAPBOX_ACCESS_TOKEN);
         setTheme(R.style.Theme_AppCompat_Light_NoActionBar);
         initNightMode();
         super.onCreate(savedInstanceState);
@@ -71,9 +71,12 @@ public class EmbeddedNavigationActivity extends AppCompatActivity implements OnN
         speedWidget = findViewById(R.id.speed_limit);
         spacer = findViewById(R.id.spacer);
         setSpeedWidgetAnchor(R.id.summaryBottomSheet);
-
+        Intent intent = getIntent();
+        currentRoute = (DirectionsRoute) intent.getSerializableExtra(BUNDLE_CURRENT_ROUTE);
+        routeRequest = (RouteRequest) intent.getSerializableExtra(BUNDLE_ROUTE_REQUEST);
+        Point origin = routeRequest.getOrigin();
         CameraPosition initialPosition = new CameraPosition.Builder()
-                .target(new LatLng(ORIGIN.latitude(), ORIGIN.longitude()))
+                .target(new LatLng(origin.latitude(), origin.longitude()))
                 .zoom(INITIAL_ZOOM)
                 .build();
         navigationView.onCreate(savedInstanceState);
@@ -82,7 +85,7 @@ public class EmbeddedNavigationActivity extends AppCompatActivity implements OnN
 
     @Override
     public void onNavigationReady(boolean isRunning) {
-        fetchRoute();
+        startNavigation();
     }
 
     @Override
@@ -178,45 +181,26 @@ public class EmbeddedNavigationActivity extends AppCompatActivity implements OnN
     }
 
     @Override
-    public SpeechAnnouncement willVoice(SpeechAnnouncement announcement) {
-        return SpeechAnnouncement.builder().announcement("All announcements will be the same.").build();
-    }
-
-    @Override
     public BannerInstructions willDisplay(BannerInstructions instructions) {
         return instructions;
     }
 
-    private void startNavigation(DirectionsRoute directionsRoute) {
+    private void startNavigation() {
         NavigationViewOptions.Builder options =
                 NavigationViewOptions.builder()
                         .navigationListener(this)
-                        .directionsRoute(directionsRoute)
-                        .shouldSimulateRoute(true)
-                        .progressChangeListener(this)
-                        .instructionListListener(this)
-                        .speechAnnouncementListener(this)
-                        .bannerInstructionsListener(this);
+                        .directionsRoute(currentRoute);
+        if (BuildConfig.DEBUG) {
+            options.shouldSimulateRoute(true);
+        }
+        options.progressChangeListener(this)
+                .instructionListListener(this)
+                .routeListener(this)
+                .bannerInstructionsListener(this);
         setBottomSheetCallback(options);
         setupNightModeFab();
 
         navigationView.startNavigation(options.build());
-    }
-
-    private void fetchRoute() {
-        NavigationRoute.builder(this)
-                .accessToken(Mapbox.getAccessToken())
-                .origin(ORIGIN)
-                .destination(DESTINATION)
-                .alternatives(true)
-                .build()
-                .getRoute(new SimplifiedCallback() {
-                    @Override
-                    public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
-                        DirectionsRoute directionsRoute = response.body().routes().get(0);
-                        startNavigation(directionsRoute);
-                    }
-                });
     }
 
     /**
@@ -322,5 +306,33 @@ public class EmbeddedNavigationActivity extends AppCompatActivity implements OnN
         if (!instructionListShown) {
             speedWidget.setVisibility(View.VISIBLE);
         }
+    }
+
+    @Override
+    public boolean allowRerouteFrom(Point offRoutePoint) {
+        return true;
+    }
+
+    @Override
+    public void onOffRoute(Point offRoutePoint) {
+
+    }
+
+    @Override
+    public void onRerouteAlong(DirectionsRoute directionsRoute) {
+
+    }
+
+    @Override
+    public void onFailedReroute(String errorMessage) {
+
+    }
+
+    @Override
+    public void onArrival() {
+        Intent resultIntent = new Intent();
+        resultIntent.putExtra(BUNDLE_ROUTE_REQUEST, routeRequest);
+        setResult(Activity.RESULT_OK, resultIntent);
+        finish();
     }
 }

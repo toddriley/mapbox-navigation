@@ -1,7 +1,10 @@
 package com.example.mapboxrepro;
+
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,20 +20,35 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.mapbox.android.core.permissions.PermissionsListener;
 import com.mapbox.android.core.permissions.PermissionsManager;
+import com.mapbox.api.directions.v5.models.DirectionsResponse;
+import com.mapbox.api.directions.v5.models.DirectionsRoute;
+import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
+import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import retrofit2.Call;
+import retrofit2.Response;
+
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
-public class MainActivity extends AppCompatActivity implements PermissionsListener {
+public class MainActivity extends AppCompatActivity implements ActivityResultListener, PermissionsListener {
+    private static final String TAG = "MainActivity";
     private RecyclerView recyclerView;
     private PermissionsManager permissionsManager;
+    public static final int ARRIVAL_LOCATION_REQUEST_ID = 0;
+    private static final Point ORIGIN = Point.fromLngLat(-77.03194990754128, 38.909664963450105);
+    private static final Point DESTINATION = Point.fromLngLat(-77.0270025730133, 38.91057077063121);
+
+    private DirectionsRoute currentRoute;
+    private RouteRequest routeRequest;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Mapbox.getInstance(this, BuildConfig.MAPBOX_ACCESS_TOKEN);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -62,6 +80,9 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
         } else {
             requestPermissionIfNotGranted(WRITE_EXTERNAL_STORAGE);
         }
+
+        routeRequest = new RouteRequest(ORIGIN, DESTINATION);
+        fetchRoute();
     }
 
     @Override
@@ -135,9 +156,16 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                     .inflate(R.layout.item_main_feature, parent, false);
 
             view.setOnClickListener(clickedView -> {
-                int position = recyclerView.getChildLayoutPosition(clickedView);
-                Intent intent = new Intent(clickedView.getContext(), samples.get(position).getActivity());
-                startActivity(intent);
+                if (currentRoute != null) {
+                    int position = recyclerView.getChildLayoutPosition(clickedView);
+                    Intent intent = new Intent(clickedView.getContext(), samples.get(position).getActivity());
+                    intent.putExtra(EmbeddedNavigationActivity.BUNDLE_CURRENT_ROUTE, currentRoute);
+                    intent.putExtra(EmbeddedNavigationActivity.BUNDLE_ROUTE_REQUEST, routeRequest);
+                    intent.putExtra("origin", currentRoute);
+                    startActivityForResult(intent, ARRIVAL_LOCATION_REQUEST_ID);
+                } else {
+                    Log.w(TAG, "currentRoute is null");
+                }
             });
 
             return new ViewHolder(view);
@@ -152,6 +180,32 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
         @Override
         public int getItemCount() {
             return samples.size();
+        }
+    }
+
+    private void fetchRoute() {
+        NavigationRoute.builder(this)
+                .accessToken(Mapbox.getAccessToken())
+                .origin(ORIGIN)
+                .destination(DESTINATION)
+                .alternatives(true)
+                .build()
+                .getRoute(new SimplifiedCallback() {
+                    @Override
+                    public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
+                        Log.i(TAG, "Route response received");
+                        currentRoute = response.body().routes().get(0);
+                    }
+                });
+    }
+
+    @Override
+    public void onCustomActivityResult(int requestCode, int resultCode, Intent bundle) {
+        Log.i("Main", "Result received");
+        if (requestCode == ARRIVAL_LOCATION_REQUEST_ID) {
+            if (resultCode == Activity.RESULT_OK) {
+                Log.i(TAG, "Activity completed successfully");
+            }
         }
     }
 }
