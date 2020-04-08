@@ -40,8 +40,8 @@ public class MainActivity extends AppCompatActivity implements ActivityResultLis
     private RecyclerView recyclerView;
     private PermissionsManager permissionsManager;
     public static final int ARRIVAL_LOCATION_REQUEST_ID = 0;
-    private static final Point ORIGIN = Point.fromLngLat(-77.03194990754128, 38.909664963450105);
-    private static final Point DESTINATION = Point.fromLngLat(-77.0270025730133, 38.91057077063121);
+    private static final Point ORIGIN = Point.fromLngLat(-77.5659408569336, 37.605369567871094);
+    private static final Point DESTINATION = Point.fromLngLat(-77.5505277, 37.461559);
 
     private DirectionsRoute currentRoute;
     private RouteRequest routeRequest;

@@ -189,14 +189,12 @@ public class EmbeddedNavigationActivity extends AppCompatActivity implements
         NavigationViewOptions.Builder options =
                 NavigationViewOptions.builder()
                         .navigationListener(this)
-                        .directionsRoute(currentRoute);
-        if (BuildConfig.DEBUG) {
-            options.shouldSimulateRoute(true);
-        }
-        options.progressChangeListener(this)
-                .instructionListListener(this)
-                .routeListener(this)
-                .bannerInstructionsListener(this);
+                        .directionsRoute(currentRoute)
+                        .shouldSimulateRoute(true)
+                        .progressChangeListener(this)
+                        .instructionListListener(this)
+                        .routeListener(this)
+                        .bannerInstructionsListener(this);
         setBottomSheetCallback(options);
         setupNightModeFab();
 
