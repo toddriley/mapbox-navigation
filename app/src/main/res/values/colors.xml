@@ -4,4 +4,6 @@
     <color name="colorPrimaryDark">#00574B</color>
     <color name="colorAccent">#D81B60</color>
     <color name="red">#FF0000</color>
+    <color name="navigation_route_layer_green">#52912e</color>
+    <color name="navigation_route_shield_layer_color">#4F892E</color>
 </resources>

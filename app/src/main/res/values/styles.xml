@@ -15,4 +15,14 @@
     <style name="CustomNavigationView" parent="NavigationViewLight">
         <item name="navigationViewRouteStyle">@style/CustomNavigationMapRoute</item>
     </style>
+
+    <style name="MapViewRoute" parent="NavigationMapRoute">
+        <item name="routeColor">@color/navigation_route_layer_green</item>
+        <item name="routeShieldColor">@color/navigation_route_shield_layer_color</item>
+
+        <item name="originWaypointIcon">@drawable/empty_rectangle</item>
+        <item name="destinationWaypointIcon">@drawable/empty_rectangle</item>
+
+        <item name="routeScale">0.25</item>
+    </style>
 </resources>
