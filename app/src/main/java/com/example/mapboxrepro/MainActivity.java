@@ -6,22 +6,15 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.mapbox.android.core.permissions.PermissionsListener;
 import com.mapbox.android.core.permissions.PermissionsManager;
-import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.Point;
@@ -34,18 +27,10 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.maps.Style;
-import com.mapbox.mapboxsdk.maps.UiSettings;
 import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
-import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
-
-import retrofit2.Call;
-import retrofit2.Response;
-import timber.log.Timber;
 
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
@@ -152,26 +137,25 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onMapReady(@NonNull MapboxMap mapboxMap) {
-        Log.i("Main","onMapReady called");
+        Log.i("Main", "onMapReady called");
         this.mapboxMap = mapboxMap;
         updateCameraView();
         renderMapMarkers();
-//        disableMapInteraction();
 
     }
 
     private void renderMapMarkers() {
-        Timber.v("Building map marker style");
+        Log.v(TAG, "Building map marker style");
         Resources resources = getResources();
-        Feature origin= Feature.fromGeometry(ORIGIN);
-        Feature destination= Feature.fromGeometry(DESTINATION);
+        Feature origin = Feature.fromGeometry(ORIGIN);
+        Feature destination = Feature.fromGeometry(DESTINATION);
         List<Feature> markerList = new ArrayList<>();
         markerList.add(origin);
         markerList.add(destination);
 
         Style.Builder styleBuilder = MapDecorator.getStyleBuilderWithStops(
-                    resources,
-                    markerList);
+                resources,
+                markerList);
 
         mapboxMap.setStyle(styleBuilder, style -> {
             MapBoxClient.getInstance().buildRoute(getApplicationContext(),
@@ -191,11 +175,6 @@ public class MainActivity extends AppCompatActivity implements
                     .build()));
         }
     }
-
-//    private void disableMapInteraction() {
-//        UiSettings settings = mapboxMap.getUiSettings();
-//        settings.setAllGesturesEnabled(false);
-//    }
 
     private void renderMapLine(Style style) {
         NavigationMapRoute navigationMapRoute = new NavigationMapRoute(null, mapView, mapboxMap, R.style.MapViewRoute);

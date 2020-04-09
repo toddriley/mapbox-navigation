@@ -1,6 +1,7 @@
 package com.example.mapboxrepro;
 
 import android.content.Context;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -8,20 +9,17 @@ import androidx.annotation.Nullable;
 import com.mapbox.api.directions.v5.DirectionsCriteria;
 import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
-import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
 
-import java.util.List;
 import java.util.function.Consumer;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-import timber.log.Timber;
 
 public class MapBoxClient {
-
+    private static final String TAG = "MapBoxClient";
     private static MapBoxClient instance = new MapBoxClient();
 
     private int routeRequestFailCount = 0;
@@ -44,7 +42,7 @@ public class MapBoxClient {
                            @Nullable Consumer<Void> failureCallback
     ) {
         if (routeRequest.equals(previousSuccessfulRequest)) {
-            Timber.v("Requesting duplicate route, returning previous response.");
+            Log.v(TAG, "Requesting duplicate route, returning previous response.");
             successCallback.accept(currentRoute);
             return;
         }
@@ -59,13 +57,11 @@ public class MapBoxClient {
                     @Override
                     public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
                         resetRouteRequestFailCount();
-                        // You can get the generic HTTP info about the response
-                        Timber.d("Response code: %s", response.code());
                         if (response.body() == null) {
-                            Timber.e("No routes found, make sure you set the right user and access token.  Error code %s.  Error message %s", response.code(), response.message());
+                            Log.e(TAG,"No routes found, make sure you set the right user and access token.");
                             return;
                         } else if (response.body().routes().size() < 1) {
-                            Timber.e("No routes found.  Error code %s.  Error message %s", response.code(), response.message());
+                            Log.e(TAG,"No routes found");
                             return;
                         }
 
@@ -76,7 +72,7 @@ public class MapBoxClient {
 
                     @Override
                     public void onFailure(Call<DirectionsResponse> call, Throwable throwable) {
-                        Timber.e("Error: %s", throwable.getMessage());
+                        Log.e(TAG,"Error: %s", throwable);
                         MapBoxClient.getInstance().incrementRouteRequestFailCount();
                         if (failureCallback != null) {
                             failureCallback.accept(null);

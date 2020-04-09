@@ -40,9 +40,7 @@ public class MapDecorator {
 
     @NonNull
     static Style.Builder getStyleBuilder(@NonNull Resources resources) {
-        Drawable completeMarkerIcon = resources.getDrawable(R.drawable.faded_green_marker, null);
         Drawable endpointIcon = resources.getDrawable(R.drawable.ic_aap_flag_no_circle_black, null);
-        Drawable markerIcon = resources.getDrawable(R.drawable.green_marker, null);
 
         return new Style.Builder().fromUri(STYLE_URI)
                 .withImage(ENDPOINT_ICON_KEY, endpointIcon)
@@ -77,15 +75,5 @@ public class MapDecorator {
                 .include(min)
                 .include(max)
                 .build();
-    }
-
-
-    @NonNull
-    public static LatLngBounds getWaypointBounds(@NonNull List<LatLng> pointsList) {
-        LatLngBounds.Builder builder = new LatLngBounds.Builder();
-        pointsList.forEach(waypoint -> {
-            builder.include(waypoint);
-        });
-        return builder.build();
     }
 }
