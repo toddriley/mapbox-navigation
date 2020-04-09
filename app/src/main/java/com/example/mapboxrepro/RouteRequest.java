@@ -10,9 +10,6 @@ import java.util.Objects;
 public class RouteRequest implements Serializable {
     private Point origin, destination;
 
-    private static final String ORIGIN_KEY = "origin";
-    private static final String DESTINATION_KEY = "destination";
-
     RouteRequest(@NonNull Point origin, @NonNull Point destination) {
         this.origin = origin;
         this.destination = destination;
