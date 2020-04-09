@@ -56,63 +56,7 @@ public class MapViewWrapper extends MapView implements OnMapReadyCallback {
         getMapAsync(this);
     }
 
-    public synchronized void dispose() {
-        if (isDestroyed) {
-            return;
-        }
-        if (!isPaused) {
-            onPause();
-        }
-        onStop();
-        onDestroy();
-    }
-
-    public Double getLatitude() {
-        return latitude;
-    }
-
-    public Double getLongitude() {
-        return longitude;
-    }
-
-    public MapboxMap getMapboxMap() {
-        return mapboxMap;
-    }
-
-    public List<LatLng> getWaypoints() {
-        return waypoints;
-    }
-
-    public Double getZoom() {
-        return zoom;
-    }
-
-    public void init() {
-        // Required for rendering properly in Android Oreo
-        getViewTreeObserver().dispatchOnGlobalLayout();
-    }
-
-    public void setLatitude(double latitude) {
-        this.latitude = latitude;
-        updateCameraView();
-    }
-
-    public void setLongitude(double longitude) {
-        this.longitude = longitude;
-        updateCameraView();
-    }
-
-    public void setWaypoints(List<LatLng> waypoints) {
-        this.waypoints = waypoints;
-        createOrUpdateRoute();
-    }
-
-    public void setZoom(double zoom) {
-        this.zoom = zoom;
-        updateCameraView();
-    }
-
-    private void createOrUpdateRoute() {
+    private void createRoute() {
         if (waypoints.size() == 0) {
             return;
         }
