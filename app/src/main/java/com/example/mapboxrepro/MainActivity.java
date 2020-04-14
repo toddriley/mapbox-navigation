@@ -1,9 +1,9 @@
 package com.example.mapboxrepro;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -15,42 +15,48 @@ import androidx.core.content.ContextCompat;
 
 import com.mapbox.android.core.permissions.PermissionsListener;
 import com.mapbox.android.core.permissions.PermissionsManager;
+import com.mapbox.api.directions.v5.DirectionsCriteria;
+import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
-import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
-import com.mapbox.mapboxsdk.camera.CameraPosition;
-import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.maps.Style;
-import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
+import com.mapbox.mapboxsdk.style.expressions.Expression;
+import com.mapbox.mapboxsdk.style.layers.Property;
+import com.mapbox.mapboxsdk.style.layers.PropertyFactory;
+import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
+import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 public class MainActivity extends AppCompatActivity implements
-        ActivityResultListener,
         MapboxMap.OnMapClickListener,
         OnMapReadyCallback,
         PermissionsListener {
     private static final String TAG = "MainActivity";
-    private static final int SHOW_ROUTE_BOUNDS_PADDING = 75;
-    private static final int SHOW_ROUTE_EASE_DURATION = 1000;
-    public static final int ARRIVAL_LOCATION_REQUEST_ID = 0;
     private static final Point ORIGIN = Point.fromLngLat(-77.5659408569336, 37.605369567871094);
     private static final Point DESTINATION = Point.fromLngLat(-77.5505277, 37.461559);
+    private static final String ENDPOINT_ICON_KEY = "endpoint_icon";
+    private static final String SOURCE_ID = "SOURCE_ID";
+    private static final String STYLE_URI = "mapbox://styles/mapbox/navigation-guidance-day-v3";
+    private static final String LAYER_ID = "LAYER_ID";
 
     private MapView mapView;
-    private MapboxMap mapboxMap;
     private PermissionsManager permissionsManager;
     private DirectionsRoute currentRoute;
     private RouteRequest routeRequest;
+    private boolean navigationIsReady = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,80 +124,69 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public boolean onMapClick(LatLng point) {
         Log.i(TAG, "Clicked");
-        Intent intent = new Intent(getApplicationContext(), EmbeddedNavigationActivity.class);
-        intent.putExtra(EmbeddedNavigationActivity.BUNDLE_CURRENT_ROUTE, currentRoute);
-        intent.putExtra(EmbeddedNavigationActivity.BUNDLE_ROUTE_REQUEST, routeRequest);
-        startActivityForResult(intent, ARRIVAL_LOCATION_REQUEST_ID);
-        return true;
-    }
-
-    @Override
-    public void onCustomActivityResult(int requestCode, int resultCode, Intent bundle) {
-        Log.i("Main", "Result received");
-        if (requestCode == ARRIVAL_LOCATION_REQUEST_ID) {
-            if (resultCode == Activity.RESULT_OK) {
-                Log.i(TAG, "Activity completed successfully");
-            }
+        if (navigationIsReady) {
+            Intent intent = new Intent(getApplicationContext(), EmbeddedNavigationActivity.class);
+            intent.putExtra(EmbeddedNavigationActivity.BUNDLE_CURRENT_ROUTE, currentRoute);
+            intent.putExtra(EmbeddedNavigationActivity.BUNDLE_ROUTE_REQUEST, routeRequest);
+            startActivity(intent);
         }
+        return true;
     }
 
     @Override
     public void onMapReady(@NonNull MapboxMap mapboxMap) {
         Log.i("Main", "onMapReady called");
-        this.mapboxMap = mapboxMap;
-        updateCameraView();
-        renderMapMarkers();
+        fetchRoute();
 
-    }
+        Drawable endpointIcon = getResources().getDrawable(R.drawable.ic_aap_flag_no_circle_black, null);
 
-    private void renderMapMarkers() {
-        Log.v(TAG, "Building map marker style");
-        Resources resources = getResources();
-        Feature origin = Feature.fromGeometry(ORIGIN);
-        Feature destination = Feature.fromGeometry(DESTINATION);
-        List<Feature> markerList = new ArrayList<>();
-        markerList.add(origin);
-        markerList.add(destination);
-
-        Style.Builder styleBuilder = MapDecorator.getStyleBuilderWithStops(
-                resources,
-                markerList);
+        Style.Builder styleBuilder = new Style.Builder().fromUri(STYLE_URI)
+                .withImage(ENDPOINT_ICON_KEY, endpointIcon)
+                .withLayer(new SymbolLayer(LAYER_ID, SOURCE_ID)
+                        .withProperties(
+                                PropertyFactory.iconImage(Expression.literal(ENDPOINT_ICON_KEY)),
+                                PropertyFactory.iconAllowOverlap(true),
+                                PropertyFactory.iconIgnorePlacement(true),
+                                PropertyFactory.textColor(Color.WHITE),
+                                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_CENTER),
+                                PropertyFactory.textFont(new String[]{"Open Sans Bold"})
+                        )
+                );
 
         mapboxMap.setStyle(styleBuilder, style -> {
-            MapBoxClient.getInstance().buildRoute(getApplicationContext(),
-                    routeRequest,
-                    route -> {
-                        currentRoute = route;
-                        mapboxMap.getStyle(this::renderMapLine);
-                    });
+            fetchRoute();
         });
-    }
 
-    private void updateCameraView() {
-        if (mapboxMap != null) {
-            mapboxMap.moveCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition.Builder()
-                    .target(new LatLng(ORIGIN.latitude(), ORIGIN.longitude()))
-                    .zoom(12.5)
-                    .build()));
-        }
-    }
-
-    private void renderMapLine(Style style) {
-        NavigationMapRoute navigationMapRoute = new NavigationMapRoute(null, mapView, mapboxMap, R.style.MapViewRoute);
-        navigationMapRoute.addRoute(currentRoute);
-        showEntireDirectionsRoute();
-        Log.i(TAG, "Setting on click listener");
         mapboxMap.addOnMapClickListener(this);
     }
 
-    private void showEntireDirectionsRoute() {
-        if (mapboxMap == null || currentRoute == null) {
-            return;
-        }
-        LatLngBounds routeBounds = MapDecorator.getRouteBounds(currentRoute);
-        mapboxMap.easeCamera(
-                CameraUpdateFactory.newLatLngBounds(routeBounds, SHOW_ROUTE_BOUNDS_PADDING),
-                SHOW_ROUTE_EASE_DURATION);
+    private void fetchRoute() {
+        NavigationRoute.Builder routeBuilder = NavigationRoute.builder(getApplicationContext())
+                .accessToken(Mapbox.getAccessToken())
+                .origin(routeRequest.getOrigin());
+
+        routeBuilder.destination(routeRequest.getDestination())
+                .profile(DirectionsCriteria.PROFILE_DRIVING)
+                .build()
+                .getRoute(new Callback<DirectionsResponse>() {
+                    @Override
+                    public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
+                        if (response.body() == null) {
+                            Log.e(TAG, "No routes found, make sure you set the right user and access token.");
+                            return;
+                        } else if (response.body().routes().size() < 1) {
+                            Log.e(TAG, "No routes found");
+                            return;
+                        }
+                        currentRoute = response.body().routes().get(0);
+                        navigationIsReady = true;
+                    }
+
+                    @Override
+                    public void onFailure(Call<DirectionsResponse> call, Throwable throwable) {
+                        Log.e(TAG, "Error: %s", throwable);
+                    }
+                });
     }
 
     @Override
